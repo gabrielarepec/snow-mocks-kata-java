@@ -12,7 +12,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 
@@ -34,78 +33,113 @@ public class SnowRescueServiceTest {
 
 	@Test
 	public void checkForecastAndRescue_shouldSendSanderAndSnowplow_whenTemperatureBelowZeroAndSnowFallHeightIsAbove3mm(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(-1);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(5);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices).sendSander();
-		verify(municipalServices).sendSnowplow();
+		expectTemperatureInCelsius(-1);
+		expectSnowFallHeight(5);
+		checkForecastAndRescue();
+		verifySendSander();
+		verifySendSnowplow();
 	}
 
 	@Test
 	public void checkForecastAndRescue_shouldNotSendSanderAndSnowplow_whenTemperatureAboveZeroAndSnowFallHeightIsBelow3mm(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(1);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(1);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices,never()).sendSander();
-		verify(municipalServices,never()).sendSnowplow();
+		expectTemperatureInCelsius(1);
+		expectSnowFallHeight(1);
+		checkForecastAndRescue();
+		verifyDoNotSendSander();
+		verifyDoNotSendSnowplow();
 	}
 
 	@Test
 	public void checkForecastAndRescue_shouldNotSendSander_whenTemperatureIsZeroAndSnowFallHeightIs3mm(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(0);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(3);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices,never()).sendSander();
-		verify(municipalServices,never()).sendSnowplow();
-
+		expectTemperatureInCelsius(0);
+		expectSnowFallHeight(3);
+		checkForecastAndRescue();
+		verifyDoNotSendSander();
+		verifyDoNotSendSnowplow();
 	}
 
 
 	@Test
 	public void checkForecastAndRescue_shouldSendSnowplow_whenSnowFallHeightAbove3mmAndTemperatureAboveZero(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(1);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(5);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices).sendSnowplow();
-		verify(municipalServices,never()).sendSander();
+		expectTemperatureInCelsius(1);
+		expectSnowFallHeight(5);
+		checkForecastAndRescue();
+		verifySendSnowplow();
+		verifyDoNotSendSander();
 	}
 
 	@Test
 	public void checkForecastAndRescue_shouldSendSander_whenSnowFallHeightBelow3mmAndTemperatureBelowZero(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(-2);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(1);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices,never()).sendSnowplow();
-		verify(municipalServices).sendSander();
+		expectTemperatureInCelsius(-2);
+		expectSnowFallHeight(1);
+		checkForecastAndRescue();
+		verifyDoNotSendSnowplow();
+		verifySendSander();
 	}
 
 	@Test
 	public void checkForecastAndRescue_shouldSendSnowplow_whenFirstSnowPlowGivesExceptionAndTemperatureIsAbove0(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(2);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(5);
-		doThrow(new SnowplowMalfunctioningException()).doNothing().when(municipalServices).sendSnowplow();
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices,never()).sendSander();
-		verify(municipalServices,times(2)).sendSnowplow();
+		expectTemperatureInCelsius(2);
+		expectSnowFallHeight(5);
+		whenFirstSnowplowFails();
+		checkForecastAndRescue();
+		verifyDoNotSendSander();
+		verifySendSnowplowTimes(2);
 	}
+
 	@Test
 	public void checkForecastAndRescue_shouldSendTwoSnowplow_whenSnowFallHeightAbove5mmAndTemperatureIsAbove0(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(2);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(8);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices,never()).sendSander();
-		verify(municipalServices,times(2)).sendSnowplow();
+		expectTemperatureInCelsius(2);
+		expectSnowFallHeight(8);
+		checkForecastAndRescue();
+		verifyDoNotSendSander();
+		verifySendSnowplowTimes(2);
 	}
 
 	@Test
 	public void checkForecastAndRescue_shouldTwoSendSnowplowOneSanderAndNotifyPress_whenSnowFallHeightAbove5mmAndTemperatureIsAbove0(){
-		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(-20);
-		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(18);
-		snowRescueService.checkForecastAndRescue();
-		verify(municipalServices).sendSander();
-		verify(municipalServices,times(3)).sendSnowplow();
+		expectTemperatureInCelsius(-20);
+		expectSnowFallHeight(18);
+		checkForecastAndRescue();
+		verifySendSander();
+		verifySendSnowplowTimes(3);
 		verify(pressService).sendWeatherAlert();
 	}
 
+	private void verifyDoNotSendSander() {
+		verify(municipalServices,never()).sendSander();
+	}
 
+	private void verifySendSander() {
+		verify(municipalServices).sendSander();
+	}
+
+
+	private void checkForecastAndRescue() {
+		snowRescueService.checkForecastAndRescue();
+	}
+
+	private void verifySendSnowplow() {
+		verify(municipalServices).sendSnowplow();
+	}
+
+	private void verifySendSnowplowTimes(final int times) {
+		verify(municipalServices, times(times)).sendSnowplow();
+	}
+
+	private void expectSnowFallHeight(final int snowFallHeight) {
+		when(weatherForecastService.getSnowFallHeightInMM()).thenReturn(snowFallHeight);
+	}
+
+	private void verifyDoNotSendSnowplow() {
+		verify(municipalServices,never()).sendSnowplow();
+	}
+
+	private void whenFirstSnowplowFails() {
+		doThrow(new SnowplowMalfunctioningException()).doNothing().when(municipalServices).sendSnowplow();
+	}
+
+	private void expectTemperatureInCelsius(final int temperature) {
+		when(weatherForecastService.getAverageTemperatureInCelsius()).thenReturn(temperature);
+	}
 }
